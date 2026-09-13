@@ -50,26 +50,6 @@ return function()
 	aura.LockedToPart = true
 	aura.Parent = middle
 
-	local glow = Instance.new("ParticleEmitter")
-	glow.Name = "Glow"
-	glow.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-	glow.Lifetime = NumberRange.new(0.8, 1.6)
-	glow.Rate = 30
-	glow.Speed = NumberRange.new(0.5, 2)
-	glow.SpreadAngle = Vector2.new(180, 180)
-	glow.Drag = 1
-	glow.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.5),
-		NumberSequenceKeypoint.new(1, 0),
-	})
-	glow.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.2),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	glow.LightEmission = 1
-	glow.LightInfluence = 0
-	glow.Parent = root
-
 	local light = Instance.new("PointLight")
 	light.Brightness = 2
 	light.Range = 16
