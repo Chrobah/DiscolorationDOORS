@@ -1,3 +1,7 @@
+local import = ...
+
+local death = import("lib/death")
+
 local players = game:GetService("Players")
 local lighting = game:GetService("Lighting")
 local runService = game:GetService("RunService")
@@ -98,10 +102,8 @@ local function edge(part, flip)
 end
 
 local function goal()
-	local char = plr.Character
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	local here = plr:GetAttribute("CurrentRoom")
-	if not hum or hum.Health <= 0 or typeof(here) ~= "number" then
+	if typeof(here) ~= "number" then
 		return 0
 	end
 	if drained[here] then
@@ -145,7 +147,13 @@ local function start()
 	ambience:Play()
 
 	loop = runService.RenderStepped:Connect(function(dt)
-		amount += (goal() - amount) * math.min(dt * 1.5, 1)
+		local char = plr.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if hum and hum.Health > 0 then
+			amount += (goal() - amount) * math.min(dt * 1.5, 1)
+		elseif death.shown() then
+			amount = 0
+		end
 		local gain = math.max(20 * math.log10(math.max(1 - amount, 0.0001)), -80)
 		screen.Saturation = -amount
 		screen.Contrast = amount * 0.1

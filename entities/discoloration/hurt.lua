@@ -1,5 +1,6 @@
 local import = ...
 
+local death = import("lib/death")
 local drain = import("entities/discoloration/drain")
 
 local players = game:GetService("Players")
@@ -162,7 +163,9 @@ local function step(dt)
 	local char = plr.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	local alive = hum ~= nil and hum.Health > 0
-	gui.Enabled = alive
+	if not alive and death.shown() then
+		gui.Enabled = false
+	end
 	if os.clock() - lastHit < grace then
 		for _, dot in dots do
 			dot.size *= 2 ^ (dt / doubling)

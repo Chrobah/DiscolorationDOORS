@@ -61,6 +61,12 @@ function death.kill(cause, tiers, style)
 	hum.Health = 0
 end
 
+function death.shown()
+	local main = plr.PlayerGui:FindFirstChild("MainUI")
+	local screen = main and main:FindFirstChild("Death")
+	return screen ~= nil and screen.Visible
+end
+
 function death.hurt(amount, cause, tiers, style)
 	local char = plr.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
