@@ -18,10 +18,10 @@ local rooms = workspace:WaitForChild("CurrentRooms")
 local gameData = storage:WaitForChild("GameData")
 local remotes = storage:WaitForChild("RemotesFolder")
 
-local speed = 40
+local speed = 60
 local reach = 12
-local pace = 0.25
-local lethal = 2.5
+local pace = 0.05
+local lethal = 1.5
 local lookback = 4
 local warning = 2.5
 local chance = 1 / 9

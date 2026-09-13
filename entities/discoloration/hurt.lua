@@ -9,8 +9,11 @@ local runService = game:GetService("RunService")
 local plr = players.LocalPlayer
 
 local recovery = 180
-local doubling = 0.3
-local grace = 0.3
+local doubling = 0.2
+local grace = 0.1
+local burst = 10
+local spacing = 0.012
+local soakGap = 0.25
 
 local limbs = {
 	Head = "Head",
@@ -47,6 +50,7 @@ local links = {}
 local stain = 0
 local bare = false
 local lastHit = -math.huge
+local soaked = -math.huge
 local gui
 
 local function shuffle(list)
@@ -135,7 +139,7 @@ local function speck()
 		local x, y = random:NextNumber(0.02, 0.98), random:NextNumber(0.02, 0.98)
 		local taken = false
 		for _, dot in dots do
-			if math.abs(dot.x - x) < 0.05 and math.abs(dot.y - y) < 0.05 then
+			if math.abs(dot.x - x) < spacing and math.abs(dot.y - y) < spacing then
 				taken = true
 				break
 			end
@@ -190,16 +194,22 @@ function hurt.hit()
 		table.insert(links, runService.RenderStepped:Connect(step))
 		table.insert(links, plr.CharacterAdded:Connect(hurt.clear))
 	end
-	local key = table.remove(order, 1)
-	if key then
-		soak(key)
+	if os.clock() - soaked >= soakGap then
+		soaked = os.clock()
+		local key = table.remove(order, 1)
+		if key then
+			soak(key)
+		end
 	end
-	speck()
+	for _ = 1, burst do
+		speck()
+	end
 	apply()
 end
 
 function hurt.clear()
 	stain = 0
+	soaked = -math.huge
 	apply()
 	for _, link in links do
 		link:Disconnect()
