@@ -15,9 +15,10 @@ local drain = {}
 local drained = {}
 local colors = {}
 local originals = {}
+local routed = {}
 local links = {}
 local amount = 0
-local screen, ambience, loop
+local screen, hush, ambience, loop
 
 local function mono(color)
 	local shade = color.R * 0.299 + color.G * 0.587 + color.B * 0.114
@@ -73,6 +74,13 @@ local function where(thing)
 	end
 end
 
+local function reroute(thing)
+	if thing:IsA("Sound") and not thing.SoundGroup then
+		routed[thing] = true
+		thing.SoundGroup = sounds.Main
+	end
+end
+
 local function door(number, name)
 	local room = rooms:FindFirstChild(tostring(number))
 	return room and room:FindFirstChild(name)
@@ -90,8 +98,10 @@ local function edge(part, flip)
 end
 
 local function goal()
+	local char = plr.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	local here = plr:GetAttribute("CurrentRoom")
-	if typeof(here) ~= "number" then
+	if not hum or hum.Health <= 0 or typeof(here) ~= "number" then
 		return 0
 	end
 	if drained[here] then
@@ -110,6 +120,7 @@ local function quiet()
 	loop:Disconnect()
 	loop = nil
 	screen:Destroy()
+	hush:Destroy()
 	ambience:Destroy()
 end
 
@@ -120,19 +131,25 @@ local function start()
 	screen.Name = "Discoloration"
 	screen.Parent = lighting
 
+	hush = Instance.new("EqualizerSoundEffect")
+	hush.Name = "Discoloration"
+	hush.HighGain, hush.MidGain, hush.LowGain = 0, 0, 0
+	hush.Parent = sounds.Main
+
 	ambience = Instance.new("Sound")
 	ambience.Name = "Discoloration"
 	ambience.SoundId = "rbxassetid://132917229044801"
 	ambience.Looped = true
 	ambience.Volume = 0
-	ambience.SoundGroup = sounds.Main.Ambience
 	ambience.Parent = sounds
 	ambience:Play()
 
 	loop = runService.RenderStepped:Connect(function(dt)
 		amount += (goal() - amount) * math.min(dt * 1.5, 1)
+		local gain = math.max(20 * math.log10(math.max(1 - amount, 0.0001)), -80)
 		screen.Saturation = -amount
 		screen.Contrast = amount * 0.1
+		hush.HighGain, hush.MidGain, hush.LowGain = gain, gain, gain
 		ambience.Volume = amount * loudest
 		if not next(drained) and amount < 0.005 then
 			quiet()
@@ -141,10 +158,29 @@ local function start()
 end
 
 local function mark(number)
-	drained[number] = true
+	local list = {}
 	local room = rooms:FindFirstChild(tostring(number))
-	if room then
+	if not room then
+		return list
+	end
+	local fresh = not drained[number]
+	drained[number] = true
+	local entrance = room:FindFirstChild("RoomEntrance")
+	local from = entrance and entrance.Position or room:GetPivot().Position
+	for _, thing in room:GetDescendants() do
+		local spot = where(thing)
+		if spot then
+			table.insert(list, {thing = thing, key = (spot - from).Magnitude})
+		elseif fresh then
+			reroute(thing)
+		end
+	end
+	table.sort(list, function(a, b)
+		return a.key < b.key
+	end)
+	if fresh then
 		links[room] = room.DescendantAdded:Connect(function(thing)
+			reroute(thing)
 			if where(thing) then
 				paint(thing)
 			end
@@ -153,6 +189,7 @@ local function mark(number)
 	if not loop then
 		start()
 	end
+	return list
 end
 
 local unload = rooms.ChildRemoved:Connect(function(room)
@@ -168,6 +205,7 @@ local unload = rooms.ChildRemoved:Connect(function(room)
 	for _, thing in room:GetDescendants() do
 		colors[thing] = nil
 		originals[thing] = nil
+		routed[thing] = nil
 		if links[thing] then
 			links[thing]:Disconnect()
 			links[thing] = nil
@@ -175,41 +213,42 @@ local unload = rooms.ChildRemoved:Connect(function(room)
 	end
 end)
 
-function drain.spread(route)
-	local list = {}
-	for number, start in route.rooms do
-		local room = rooms:FindFirstChild(tostring(number))
-		if room then
-			local entrance = room:FindFirstChild("RoomEntrance")
-			local from = entrance and entrance.Position or room:GetPivot().Position
-			for _, thing in room:GetDescendants() do
-				local spot = where(thing)
-				if spot then
-					table.insert(list, {thing = thing, key = start + (spot - from).Magnitude})
-				end
-			end
-			task.wait()
-		end
-	end
-	table.sort(list, function(a, b)
-		return a.key < b.key
-	end)
+drain.mono = mono
 
-	local index = 1
+function drain.level()
+	return loop and amount or 0
+end
+
+function drain.spread(route)
+	local lists, cursors = {}, {}
 	return function(dist)
+		local budget = 300
+		local done = true
 		for number, start in route.rooms do
-			if start <= dist and not drained[number] then
-				mark(number)
+			if dist < start then
+				done = false
+				continue
+			end
+			local list = lists[number]
+			if not list then
+				list = mark(number)
+				lists[number] = list
+				cursors[number] = 1
+			end
+			local index = cursors[number]
+			while budget > 0 and list[index] and start + list[index].key <= dist do
+				if list[index].thing.Parent then
+					paint(list[index].thing)
+				end
+				index += 1
+				budget -= 1
+			end
+			cursors[number] = index
+			if list[index] then
+				done = false
 			end
 		end
-		local budget = index + 300
-		while list[index] and list[index].key <= dist and index < budget do
-			if list[index].thing.Parent then
-				paint(list[index].thing)
-			end
-			index += 1
-		end
-		return list[index] == nil
+		return done
 	end
 end
 
@@ -228,9 +267,13 @@ function drain.clear()
 	for thing, original in originals do
 		thing:SetAttribute("OriginalColor", original)
 	end
+	for thing in routed do
+		thing.SoundGroup = nil
+	end
 	table.clear(links)
 	table.clear(colors)
 	table.clear(originals)
+	table.clear(routed)
 	table.clear(drained)
 	if loop then
 		quiet()

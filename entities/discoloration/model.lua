@@ -2,8 +2,6 @@ local import, base = ...
 
 local assets = import("lib/assets")
 
-local sounds = game:GetService("SoundService")
-
 return function()
 	local root = Instance.new("Part")
 	root.Name = "DiscolorationMoving"
@@ -86,7 +84,6 @@ return function()
 	noise.RollOffMode = Enum.RollOffMode.InverseTapered
 	noise.RollOffMinDistance = 12
 	noise.RollOffMaxDistance = 120
-	noise.SoundGroup = sounds.Main.Sound
 	noise.Parent = root
 
 	local muffle = Instance.new("EqualizerSoundEffect")
