@@ -19,9 +19,9 @@ local gameData = storage:WaitForChild("GameData")
 local remotes = storage:WaitForChild("RemotesFolder")
 
 local speed = 60
-local reach = 12
+local reach = 50
 local pace = 0.05
-local lethal = 1.5
+local dps = 100
 local lookback = 4
 local warning = 2.5
 local chance = 1 / 9
@@ -43,14 +43,14 @@ local function caught(model)
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	if not hum or not root or hum.Health <= 0 or char:GetAttribute("Hiding") then
-		return nil
+		return false
 	end
 	local gap = root.Position - model.Position
 	if gap.Magnitude > reach then
-		return nil
+		return false
 	end
 	params.FilterDescendantsInstances = {char, model}
-	return workspace:Raycast(model.Position, gap, params) == nil and hum or nil
+	return workspace:Raycast(model.Position, gap, params) == nil
 end
 
 local function sectorOf(number)
@@ -116,12 +116,11 @@ function entity.spawn()
 				shake = 0.2
 				remotes.CamShakeRelativeClient:Fire(model.Position, 2, 12, 0, 0.5)
 			end
-			local hum = caught(model)
-			sting = hum and sting + dt or 0
-			while hum and sting >= pace do
+			sting = caught(model) and sting + dt or 0
+			while sting >= pace do
 				sting -= pace
 				hurt.hit()
-				death.hurt(hum.MaxHealth * pace / lethal, "Discoloration", hints, "Yellow")
+				death.hurt(dps * pace, "Discoloration", hints, "Yellow")
 			end
 		end
 

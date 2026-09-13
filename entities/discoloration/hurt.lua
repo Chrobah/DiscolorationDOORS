@@ -9,11 +9,11 @@ local runService = game:GetService("RunService")
 local plr = players.LocalPlayer
 
 local recovery = 180
-local doubling = 0.2
+local doubling = 0.13
 local grace = 0.1
-local burst = 10
+local burst = 15
 local spacing = 0.012
-local soakGap = 0.25
+local soakGap = 0.17
 
 local limbs = {
 	Head = "Head",
