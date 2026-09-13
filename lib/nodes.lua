@@ -59,6 +59,25 @@ function path:add(spot)
 	table.insert(self.marks, self.length)
 end
 
+function path:room(number)
+	local room = rooms:FindFirstChild(tostring(number))
+	if not room then
+		return
+	end
+	self.rooms[number] = self.length
+	local entrance = room:FindFirstChild("RoomEntrance")
+	local exit = room:FindFirstChild("RoomExit")
+	if entrance then
+		self:add(entrance.Position)
+	end
+	for _, spot in grab(room) or {} do
+		self:add(spot)
+	end
+	if exit then
+		self:add(exit.Position)
+	end
+end
+
 function path:at(dist)
 	local spots, marks = self.spots, self.marks
 	for i = 2, #spots do
@@ -72,21 +91,7 @@ end
 function nodes.between(first, last)
 	local route = nodes.new()
 	for number = first, last do
-		local room = rooms:FindFirstChild(tostring(number))
-		if room then
-			route.rooms[number] = route.length
-			local entrance = room:FindFirstChild("RoomEntrance")
-			local exit = room:FindFirstChild("RoomExit")
-			if entrance then
-				route:add(entrance.Position)
-			end
-			for _, spot in grab(room) or {} do
-				route:add(spot)
-			end
-			if exit then
-				route:add(exit.Position)
-			end
-		end
+		route:room(number)
 	end
 	return route
 end
