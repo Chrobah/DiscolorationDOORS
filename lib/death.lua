@@ -61,4 +61,17 @@ function death.kill(cause, tiers, style)
 	hum.Health = 0
 end
 
+function death.hurt(amount, cause, tiers, style)
+	local char = plr.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not hum or hum.Health <= 0 then
+		return
+	end
+	if hum.Health > amount then
+		hum.Health -= amount
+	else
+		death.kill(cause, tiers, style)
+	end
+end
+
 return death

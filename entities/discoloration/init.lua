@@ -3,6 +3,7 @@ local import = ...
 local nodes = import("lib/nodes")
 local death = import("lib/death")
 local drain = import("entities/discoloration/drain")
+local hurt = import("entities/discoloration/hurt")
 local build = import("entities/discoloration/model")
 local hints = import("entities/discoloration/hints")
 
@@ -18,7 +19,9 @@ local gameData = storage:WaitForChild("GameData")
 local remotes = storage:WaitForChild("RemotesFolder")
 
 local speed = 40
-local reach = 7
+local reach = 12
+local pace = 0.25
+local lethal = 2.5
 local lookback = 4
 local warning = 2.5
 local chance = 1 / 9
@@ -40,14 +43,14 @@ local function caught(model)
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	if not hum or not root or hum.Health <= 0 or char:GetAttribute("Hiding") then
-		return false
+		return nil
 	end
 	local gap = root.Position - model.Position
 	if gap.Magnitude > reach then
-		return false
+		return nil
 	end
 	params.FilterDescendantsInstances = {char, model}
-	return workspace:Raycast(model.Position, gap, params) == nil
+	return workspace:Raycast(model.Position, gap, params) == nil and hum or nil
 end
 
 local function sectorOf(number)
@@ -97,9 +100,14 @@ function entity.spawn()
 		model.Noise:Play()
 		tweens:Create(model.Noise, TweenInfo.new(2), {Volume = 1.5}):Play()
 
-		local dist, shake = 0, 0
+		local dist, shake, sting = 0, 0, 0
+		local last = latest
 		while dist < route.length and running == token do
 			local dt = runService.Heartbeat:Wait()
+			while last < gameData.LatestRoom.Value and rooms:FindFirstChild(tostring(last + 1)) do
+				last += 1
+				route:room(last)
+			end
 			dist += speed * dt
 			shake -= dt
 			model.CFrame = CFrame.new(route:at(dist) + Vector3.new(0, math.sin(os.clock() * 2.5) * 0.35, 0))
@@ -108,8 +116,12 @@ function entity.spawn()
 				shake = 0.2
 				remotes.CamShakeRelativeClient:Fire(model.Position, 2, 12, 0, 0.5)
 			end
-			if caught(model) then
-				death.kill("Discoloration", hints, "Yellow")
+			local hum = caught(model)
+			sting = hum and sting + dt or 0
+			while hum and sting >= pace do
+				sting -= pace
+				hurt.hit()
+				death.hurt(hum.MaxHealth * pace / lethal, "Discoloration", hints, "Yellow")
 			end
 		end
 
@@ -159,6 +171,7 @@ function entity.stop()
 	end
 	table.clear(links)
 	nodes.stop()
+	hurt.clear()
 	drain.clear()
 end
 
