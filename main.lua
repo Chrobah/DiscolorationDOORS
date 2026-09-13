@@ -14,3 +14,4 @@ local function import(name)
 end
 
 getgenv().Discoloration = import("entities/discoloration/init").start()
+print("Armed Discoloration")
